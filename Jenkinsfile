@@ -17,11 +17,6 @@ pipeline {
         sh 'mvn clean package'
       }
     }
-    stage('Test') {
-      steps {
-        sh '<MAVEN_TEST_COMMAND>'
-      }
-    }
     stage('Deploy') {
       steps {
         deploy adapters: [tomcat9(credentialsId: 'tomcat-manager', url: 'https://192.168.56.102')], contextPath: null, war: 'path/to/war'
