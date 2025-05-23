@@ -69,8 +69,8 @@ spec:
             executor \
     		--dockerfile=Dockerfile \
     		--context=dir://${WORKSPACE} \
-    		--destination=sihyeon112/kaniko:${BUILD_NUMBER} \
-   		--destination=sihyeon112/kaniko:latest
+    		--destination=sihyeon112/jenkins-kaniko:${BUILD_NUMBER} \
+   		--destination=sihyeon112/jenkins-kaniko:latest
           '''
         }
       }
