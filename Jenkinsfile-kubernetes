@@ -112,4 +112,28 @@ spec:
       }
     }
   }
+ post {
+   success {
+     discordSend(
+       description: "알림테스트",
+       footer: "테스트 빌드가 성공했습니다.",
+       link: env.BUILD_URL,
+       result: currentBuild.currentResult,
+       title: "테스트 젠킨스 job",
+       webhookURL: "https://discord.com/api/webhooks/1374971209883717663/Fnon1uS-pdkPPNgNLgA1Kx90Oy8eAsyleT886vYkd8J9s4E4ck9zxJBxk53iSDhpeRtW"
+     )
+   } 
+
+   failure {
+     discordSend(
+       description: "알림테스트",
+       footer: "테스트 빌드가 실패했습니다.",
+       link: env.BUILD_URL,
+       result: currentBuild.currentResult,
+       title: "테스트 젠킨스 job",
+       webhookURL: "https://discord.com/api/webhooks/1374971209883717663/Fnon1uS-pdkPPNgNLgA1Kx90Oy8eAsyleT886vYkd8J9s4E4ck9zxJBxk53iSDhpeRtW"
+     )
+   }
+ }
 }
+
