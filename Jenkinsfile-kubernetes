@@ -48,7 +48,6 @@ spec:
       steps {
         container('maven') {
           sh 'mvn clean package -DskipTests=true'
-	  sh 'ls -lh target/'
         }
       }
     }
@@ -68,10 +67,11 @@ spec:
         container('kaniko') {
           sh '''
             executor \
-              --dockerfile=Dockerfile \
-              --context=dir:///home/jenkins/agent/workspace/kube_pipeline/ \
-              --destination=sihyeon112/kaniko$BUILD_NUMBER \
-              --destination=sihyeon112/kaniko:latest
+		  executor \
+    			--dockerfile=Dockerfile \
+    			--context=dir://${WORKSPACE} \
+    			--destination=sihyeon112/kaniko:${BUILD_NUMBER} \
+    			--destination=sihyeon112/kaniko:latest
           '''
         }
       }
