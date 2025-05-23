@@ -67,11 +67,10 @@ spec:
         container('kaniko') {
           sh '''
             executor \
-		  executor \
-    			--dockerfile=Dockerfile \
-    			--context=dir://${WORKSPACE} \
-    			--destination=sihyeon112/kaniko:${BUILD_NUMBER} \
-    			--destination=sihyeon112/kaniko:latest
+    		--dockerfile=Dockerfile \
+    		--context=dir://${WORKSPACE} \
+    		--destination=sihyeon112/kaniko:${BUILD_NUMBER} \
+   		--destination=sihyeon112/kaniko:latest
           '''
         }
       }
