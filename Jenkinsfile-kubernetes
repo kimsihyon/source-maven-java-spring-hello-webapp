@@ -1,44 +1,49 @@
 pipeline {
   agent {
     kubernetes {
+      // 사용할 Pod 정의 (Maven, Git, Kaniko 컨테이너 포함)
       yaml '''
-        apiVersion: v1
-        kind: Pod
-        spec:
-          containers:
-          - name: maven
-            image: maven:3-openjdk-17
-            command:
-            - sleep
-            args:
-            - infinity
-          - name: kaniko
-            image: gcr.io/kaniko-project/executor:debug
-            command:
-            - sleep
-            args:
-            - infinity
-            volumeMounts:
-            - name: registry-credentials
-              mountPath: /kaniko/.docker
-          volumes:
-          - name: registry-credentials
-            secret:
-              secretName: docker-hub-credential
-              items:
-              - key: .dockerconfigjson
-                path: config.json
-        '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: maven
+      image: maven:3-openjdk-17
+      command: ["sleep"]
+      args: ["infinity"]
+    - name: git
+      image: alpine/git
+      command: ["sleep"]
+      args: ["infinity"]
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:debug
+      command: ["sleep"]
+      args: ["infinity"]
+      volumeMounts:
+        - name: registry-credentials
+          mountPath: /kaniko/.docker
+  volumes:
+    - name: registry-credentials
+      secret:
+        secretName: docker-hub-credential
+        items:
+          - key: .dockerconfigjson
+            path: config.json
+'''
     }
   }
+
   stages {
+    // 📦 1단계: 소스코드 체크아웃
     stage('Checkout') {
       steps {
         container('maven') {
-          git branch: 'main', url: 'https://github.com/kimsihyon/source-maven-java-spring-hello-webapp.git'
+          git branch: 'main', url: 'https://github.com/kimsihyon/source-maven-java-spring-hello-webapp.git'  // Git 저장소에서 main 브랜치 체크아웃
         }
       }
     }
+
+    // ⚙️ 2단계: Maven 빌드
     stage('Build') {
       steps {
         container('maven') {
@@ -46,6 +51,8 @@ pipeline {
         }
       }
     }
+
+    // ✅ 3단계: 테스트 실행
     stage('Test') {
       steps {
         container('maven') {
@@ -53,10 +60,54 @@ pipeline {
         }
       }
     }
+
+    // 🐳 4단계: Docker 이미지 빌드 & 태깅 & 푸시 (Kaniko 사용)
     stage('Build & Tag & Push Docker Image') {
       steps {
         container('kaniko') {
-          sh 'executor --context=dir://$WORKSPACE --destination=sihyeon112/jenkins-kaniko:$BUILD_NUMBER --destination=sihyeon112/jenkins-kaniko:latest'
+          sh '''
+            executor \
+              --dockerfile=Dockerfile \
+              --context=dir:///home/jenkins/agent/workspace/kube_pipeline/ \
+              --destination=sihyeon112/kaniko$BUILD_NUMBER \
+              --destination=sihyeon112/kaniko:latest
+          '''
+        }
+      }
+    }
+
+    // 🚀 5단계: K8s 배포 매니페스트 이미지 태그 업데이트 & Git Push
+    stage('Update K8s Manifests & Push') {
+      environment {
+        githubUser  = 'kimsihyon'         // 예: Ryan Jang
+        githubEmail = 'aksgdkwhfduq@gmail.com'            // 예: myaccount@example.com
+        githubId    = 'kimsihyon'         // 예: myaccount
+        githubRepo  = 'jenkins-kubernetes'        // 예: jenkins-kube-deploy
+        githubURL   = "https://github.com/kimsihyon/jenkins-kubernetes.git"
+
+        dockerhubId   = 'sihyeon112'   // 예: myaccount
+        dockerhubRepo = 'jenkins-kaniko'  // 예: hello-world
+      }
+      steps {
+        container('git') {
+          // Git 저장소 클론
+          git branch: 'main', credentialsId: 'github-credential', url: "${githubURL}"
+
+          // Git 전역 설정
+          sh "git config --global --add safe.directory ${workspace}"
+          sh "git config --global user.name ${githubUser}"
+          sh "git config --global user.email ${githubEmail}"
+
+          // deployment.yaml 파일의 이미지 태그를 최신 BUILD_NUMBER로 수정
+          sh 'sed -i "s|image:.*|image: ${dockerhubId}/${dockerhubRepo}:${BUILD_NUMBER}|g" deployment.yaml'
+
+          // 변경사항 커밋 및 푸시
+          sh 'git add deployment.yaml'
+          sh 'git commit -m "Jenkins Build Number - ${BUILD_NUMBER}"'
+
+          withCredentials([gitUsernamePassword(credentialsId: 'github-credential', gitToolName: 'Default')]) {
+            sh 'git push --set-upstream origin main'
+          }
         }
       }
     }
